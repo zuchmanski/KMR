@@ -75,26 +75,28 @@ module Kmr
 
           row.each_with_index do |e, k|
             if !last_occurance[e] || last_occurance[e] + j - 1 < k
-              results[j][e] = results[j][e] ? results[j][e] + 1 : 1
+              if results[j][e]
+                results[j][e][0] += 1
+              else
+                results[j][e] = [1, k]
+              end
               last_occurance[e] = k
             end
           end
 
           results[j].each do |id, quantity|
-            if quantity >= 2 && j > max_length
+            if quantity.first >= 2 && j > max_length
               max_length = j
-              columns = [id]
+              columns = [[id, quantity]]
               words = []
-            elsif quantity >= 2 && j == max_length
-              columns << id
+            elsif quantity.first >= 2 && j == max_length
+              columns << [id, quantity]
             end
           end
 
-          row.each_with_index do |e, i|
-            new_words << text[i, max_length] if columns.include?(e)
-          end
+          next unless columns.size > 0
 
-          words = new_words if new_words.size > 0
+          words = columns.map { |c| text[c.last.last, max_length] }
         end
       end
 
