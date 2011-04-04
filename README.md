@@ -3,7 +3,7 @@ Finding longest repeated substring
 
 This is solution for problem [rubyquiz #153](http://rubyquiz.com/quiz153.html).
 
-It finds longest repeated substrings using Karp-Miller-Rosenberg algorithm with complexity O(nlog^2n).
+It finds longest repeated substrings using Karp-Miller-Rosenberg algorithm with complexity O(n*log^2(n)).
 
 Usage
 --
