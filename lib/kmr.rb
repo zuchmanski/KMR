@@ -4,13 +4,12 @@ module Kmr
   class << self
 
     def calculate_dbf(text)
-      poz, dbf, v = [], [], []
+      dbf, v = [], []
       l, n, pot = 1, text.size, 1
 
-      n.times do |i|
-        poz[i], dbf[i] = i, []
-        dbf[0][i] = text[i].bytes.first
-      end
+      poz = (0...n).to_a
+      n.times { |i| dbf[i] = [] }
+      dbf[0] = text.split("").map { |c| c.bytes.first }
 
       while(pot < n)
         0.upto(n-pot-1) { |i| v[i] = [ dbf[l-1][i], dbf[l-1][i+pot] ] }
@@ -40,63 +39,72 @@ module Kmr
       dbf = calculate_dbf(text)
       n = text.size
       results, last_occurance, row, base_row = [], {}, [], nil
-      max_length, words, columns = -1, [], []
+      max_length, words, columns, v = -1, [], [], []
+
+      dbf_ok = {}
 
       dbf.each_with_index do |dbf_row, i|
-        next if i == 0
-        (2**i).upto([2**(i+1)-1, n].min) do |j|
-          if j == 2**i
-            row = dbf_row
-            base_row = dbf_row.dup
-          else
-            v, tmp, poz = [], [], []
-            tmp[j] = 0
+        dbf_ok[2**i] = dbf_row
+      end
 
-            n.times do |c|
-              poz[c], v[c] = c, []
-              comp = 2**i
+      from = 1
+      to = n/2+1
 
-              v[c] << [ base_row[c], base_row[c+j-comp] ]
-            end
+      poz = (0...n).to_a
 
-            poz.sort! do |a, b|
-              v[a].first == v[b].first ? v[a].last <=> v[b].last : v[a].first <=> v[b].first
-            end
+      while(from + 1 < to)
+        j = (from+to)/2
+        base_row_id = 2**((Math.log(j)/Math.log(2)).floor)
+        base_row = dbf_ok[base_row_id]
 
-            akt = 1
-            n.times do |k|
-              row[poz[k]] = akt;
-              tmp = poz[k+1] || 0
-              akt += 1 if v[poz[k]] != v[tmp]
-            end
+        if j == base_row_id
+          row = base_row
+        else
+          n.times do |c|
+            v[c] = [ base_row[c], base_row[c+j-base_row_id] ]
           end
 
-          results[j], last_occurance, columns, new_words = {}, {}, [], []
-
-          row.each_with_index do |e, k|
-            if !last_occurance[e] || last_occurance[e] + j - 1 < k
-              if results[j][e]
-                results[j][e][0] += 1
-              else
-                results[j][e] = [1, k]
-              end
-              last_occurance[e] = k
-            end
+          poz.sort! do |a, b|
+            v[a].first == v[b].first ? v[a].last <=> v[b].last : v[a].first <=> v[b].first
           end
 
-          results[j].each do |id, quantity|
-            if quantity.first >= 2 && j > max_length
-              max_length = j
-              columns = [[id, quantity]]
-              words = []
-            elsif quantity.first >= 2 && j == max_length
-              columns << [id, quantity]
-            end
+          akt = 1
+          n.times do |k|
+            row[poz[k]] = akt;
+            tmp = poz[k+1] || 0
+            akt += 1 if v[poz[k]] != v[tmp]
           end
+        end
 
-          next unless columns.size > 0
+        results, last_occurance, columns, new_words = {}, {}, [], []
 
-          words = columns.map { |c| text[c.last.last, max_length] }
+        row.each_with_index do |e, k|
+          if !last_occurance[e] || last_occurance[e] + j - 1 < k
+            if results[e]
+              results[e][0] += 1
+            else
+              results[e] = [1, k]
+            end
+            last_occurance[e] = k
+          end
+        end
+
+        results.each do |id, quantity|
+          if quantity.first >= 2 && j > max_length
+            max_length = j
+            columns = [[id, quantity]]
+            words = []
+          elsif quantity.first >= 2 && j == max_length
+            columns << [id, quantity]
+          end
+        end
+
+        if columns.size > 0
+          new_words = columns.map { |c| text[c.last.last, max_length] }
+          from = j
+          words = new_words
+        else
+          to = j
         end
       end
 
